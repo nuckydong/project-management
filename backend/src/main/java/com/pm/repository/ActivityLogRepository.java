@@ -12,4 +12,6 @@ public interface ActivityLogRepository extends JpaRepository<ActivityLog, Long> 
     List<ActivityLog> findByTaskIdOrderByCreatedAtDesc(Long taskId);
 
     List<ActivityLog> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    List<ActivityLog> findTop20ByOrderByCreatedAtDesc();
 }

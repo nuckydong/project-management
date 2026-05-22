@@ -44,4 +44,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
 
     @Query("SELECT t.status, COUNT(t) FROM Task t WHERE t.project.id = :projectId GROUP BY t.status")
     List<Object[]> countByProjectIdGroupedByStatus(@Param("projectId") Long projectId);
+
+    List<Task> findByAssigneeIdAndStatus(Long assigneeId, String status);
+
+    List<Task> findByAssigneeIdAndProjectId(Long assigneeId, Long projectId);
+
+    long countByAssigneeIdAndProjectIdAndStatus(Long assigneeId, Long projectId, String status);
+
+    long countByAssigneeIdAndProjectId(Long assigneeId, Long projectId);
 }
