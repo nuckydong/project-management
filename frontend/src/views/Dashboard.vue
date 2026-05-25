@@ -167,7 +167,7 @@ onMounted(async () => {
     const res = await getDashboard()
     dashboard.value = res.data
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Failed to load dashboard'
+    const msg = err instanceof Error ? err.message : '加载仪表盘失败'
     message.error(msg)
   } finally {
     loading.value = false

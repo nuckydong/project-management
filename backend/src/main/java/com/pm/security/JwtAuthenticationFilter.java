@@ -6,7 +6,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -16,34 +17,40 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService userDetailsService;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String token = resolveToken(request);
+        try {
+            String token = resolveToken(request);
 
-        if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
-            Long userId = jwtTokenProvider.getUserIdFromToken(token);
-            String redisKey = Constants.REDIS_TOKEN_PREFIX + userId;
-            Object storedToken = redisTemplate.opsForValue().get(redisKey);
+            if (StringUtils.hasText(token) && jwtTokenProvider.validateToken(token)) {
+                Long userId = jwtTokenProvider.getUserIdFromToken(token);
+                String redisKey = Constants.REDIS_TOKEN_PREFIX + userId;
+                String storedToken = redisTemplate.opsForValue().get(redisKey);
 
-            if (storedToken != null && storedToken.equals(token)) {
-                UserDetails userDetails = userDetailsService.loadUserByUsername(
-                        userDetailsService.getUserById(userId).getUsername());
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
+                if (storedToken != null && storedToken.equals(token)) {
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(
+                            userDetailsService.getUserById(userId).getUsername());
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
             }
+        } catch (Exception e) {
+            log.warn("JWT认证过滤器异常: {}", e.getMessage());
         }
 
         filterChain.doFilter(request, response);

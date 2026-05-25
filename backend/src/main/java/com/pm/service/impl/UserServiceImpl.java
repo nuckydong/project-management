@@ -13,6 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
@@ -20,6 +23,40 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MinioService minioService;
+
+    @Override
+    public List<UserResponse> searchUsers(String keyword) {
+        boolean empty = keyword == null || keyword.isBlank();
+        return userRepository.searchByKeyword(keyword, empty).stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<UserResponse> listAllUsers() {
+        return userRepository.findAll().stream()
+                .map(this::toUserResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateUserStatus(Long userId, Short status) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setStatus(status);
+        user = userRepository.save(user);
+        return toUserResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(Long userId, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 
     @Override
     public UserResponse getProfile(Long userId) {

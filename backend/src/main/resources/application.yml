@@ -1,13 +1,12 @@
 server:
   port: 8080
-
 spring:
   application:
     name: project-management
   datasource:
-    url: jdbc:postgresql://localhost:5432/pm_db
+    url: jdbc:postgresql://10.8.3.34:5434/project_management
     username: postgres
-    password: postgres
+    password: 123456
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -19,17 +18,18 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   data:
     redis:
-      host: localhost
+      host: 10.8.3.34
       port: 6379
+      password: 82325588
   servlet:
     multipart:
       max-file-size: 100MB
       max-request-size: 100MB
 
 minio:
-  endpoint: http://localhost:9000
-  access-key: minioadmin
-  secret-key: minioadmin
+  endpoint: http://10.1.33.114:9001
+  access-key: minio
+  secret-key: sG3!TPF#
   buckets:
     docs: project-docs
     attachments: task-attachments

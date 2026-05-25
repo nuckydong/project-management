@@ -11,6 +11,8 @@ import java.util.List;
 
 public interface TaskService {
 
+    List<TaskResponse> listMyTasks(Long userId, String status, String keyword);
+
     PageResult<TaskResponse> list(Long projectId, TaskQueryRequest request);
 
     List<TaskResponse> listByStatus(Long projectId, String status);

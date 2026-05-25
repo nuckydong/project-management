@@ -18,8 +18,8 @@
     >
       <div class="logo">
         <img src="" alt="" style="display: none" />
-        <h1 v-if="!collapsed" class="logo-text">ProjectHub</h1>
-        <h1 v-else class="logo-text-mini">PH</h1>
+        <h1 v-if="!collapsed" class="logo-text">项目管理系统</h1>
+        <h1 v-else class="logo-text-mini">PM</h1>
       </div>
       <a-menu
         v-model:selectedKeys="selectedKeys"
@@ -29,27 +29,35 @@
       >
         <a-menu-item key="/">
           <template #icon><DashboardOutlined /></template>
-          <span>Dashboard</span>
+          <span>工作台</span>
         </a-menu-item>
         <a-menu-item key="/projects">
           <template #icon><ProjectOutlined /></template>
-          <span>Projects</span>
+          <span>项目</span>
         </a-menu-item>
         <a-menu-item key="/my-tasks">
           <template #icon><CheckSquareOutlined /></template>
-          <span>My Tasks</span>
+          <span>我的任务</span>
         </a-menu-item>
         <a-menu-item key="/documents">
           <template #icon><FileTextOutlined /></template>
-          <span>Documents</span>
+          <span>文档中心</span>
         </a-menu-item>
         <a-menu-item key="/reports">
           <template #icon><BarChartOutlined /></template>
-          <span>Reports</span>
+          <span>报表</span>
         </a-menu-item>
         <a-menu-item key="/settings">
           <template #icon><SettingOutlined /></template>
-          <span>Settings</span>
+          <span>个人设置</span>
+        </a-menu-item>
+        <a-menu-item v-if="isAdmin" key="/workspaces">
+          <template #icon><TeamOutlined /></template>
+          <span>工作空间管理</span>
+        </a-menu-item>
+        <a-menu-item v-if="isAdmin" key="/admin/users">
+          <template #icon><UserSwitchOutlined /></template>
+          <span>用户管理</span>
         </a-menu-item>
       </a-menu>
     </a-layout-sider>
@@ -76,13 +84,13 @@
           />
           <a-input-search
             v-model:value="searchText"
-            placeholder="Search projects, tasks..."
+            placeholder="搜索项目、任务..."
             style="width: 320px; margin-left: 24px"
           />
         </div>
 
         <div class="header-right">
-          <a-badge :count="3" :offset="[-2, 4]">
+          <a-badge :count="0" :offset="[-2, 4]">
             <BellOutlined class="header-icon" />
           </a-badge>
           <a-dropdown>
@@ -98,17 +106,14 @@
             <template #overlay>
               <a-menu>
                 <a-menu-item key="profile" @click="$router.push('/settings')">
-                  <UserOutlined />
-                  <span style="margin-left: 8px">Profile</span>
+                  <span class="dropdown-item"><UserOutlined /> 个人资料</span>
                 </a-menu-item>
                 <a-menu-item key="settings" @click="$router.push('/settings')">
-                  <SettingOutlined />
-                  <span style="margin-left: 8px">Settings</span>
+                  <span class="dropdown-item"><SettingOutlined /> 个人设置</span>
                 </a-menu-item>
                 <a-menu-divider />
                 <a-menu-item key="logout" @click="handleLogout">
-                  <LogoutOutlined />
-                  <span style="margin-left: 8px">Logout</span>
+                  <span class="dropdown-item"><LogoutOutlined /> 退出登录</span>
                 </a-menu-item>
               </a-menu>
             </template>
@@ -141,6 +146,8 @@ import {
   FileTextOutlined,
   BarChartOutlined,
   SettingOutlined,
+  TeamOutlined,
+  UserSwitchOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   BellOutlined,
@@ -157,7 +164,10 @@ const collapsed = ref(false)
 const searchText = ref('')
 const selectedKeys = ref<string[]>(['/'])
 
-const username = computed(() => authStore.user?.username || 'User')
+const menuPaths = ['/admin/users', '/my-tasks', '/workspaces', '/projects', '/documents', '/reports', '/settings', '/']
+
+const isAdmin = computed(() => authStore.user?.username === 'admin')
+const username = computed(() => authStore.user?.username || '用户')
 const userInitial = computed(() => username.value.charAt(0).toUpperCase())
 
 watch(
@@ -170,8 +180,6 @@ watch(
   },
   { immediate: true }
 )
-
-const menuPaths = ['/my-tasks', '/projects', '/documents', '/reports', '/settings', '/']
 
 function onMenuClick({ key }: { key: string }) {
   router.push(key)
@@ -193,7 +201,7 @@ async function handleLogout() {
 }
 
 .logo-text {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #2c3e50;
   margin: 0;
@@ -249,5 +257,11 @@ async function handleLogout() {
 .username {
   font-size: 14px;
   color: #2c3e50;
+}
+
+.dropdown-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

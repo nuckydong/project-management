@@ -10,6 +10,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class TaskController {
@@ -20,6 +22,13 @@ public class TaskController {
     @GetMapping("/api/projects/{pid}/tasks")
     public Result<PageResult<TaskResponse>> list(@PathVariable Long pid, TaskQueryRequest queryRequest) {
         return Result.success(taskService.list(pid, queryRequest));
+    }
+
+    @GetMapping("/api/my/tasks")
+    public Result<List<TaskResponse>> listMyTasks(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword) {
+        return Result.success(taskService.listMyTasks(securityUtil.getCurrentUserId(), status, keyword));
     }
 
     @PostMapping("/api/projects/{pid}/tasks")

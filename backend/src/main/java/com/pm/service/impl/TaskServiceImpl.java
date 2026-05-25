@@ -40,14 +40,24 @@ public class TaskServiceImpl implements TaskService {
     private final ActivityLogService activityLogService;
 
     @Override
+    public List<TaskResponse> listMyTasks(Long userId, String status, String keyword) {
+        boolean keywordEmpty = keyword == null || keyword.isBlank();
+        return taskRepository.findByAssigneeIdWithFilters(userId, status, keyword, keywordEmpty).stream()
+                .map(this::toTaskResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public PageResult<TaskResponse> list(Long projectId, TaskQueryRequest request) {
+        boolean keywordEmpty = request.getKeyword() == null || request.getKeyword().isBlank();
         List<Task> tasks = taskRepository.findByFilters(
                 projectId,
                 request.getStatus(),
                 request.getAssigneeId(),
                 request.getSprintId(),
                 request.getPriority(),
-                request.getKeyword()
+                request.getKeyword(),
+                keywordEmpty
         );
 
         int page = request.getPage() != null ? request.getPage() : 1;

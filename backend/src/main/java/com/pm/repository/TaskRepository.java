@@ -24,13 +24,14 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
             "AND (:assigneeId IS NULL OR t.assignee.id = :assigneeId) " +
             "AND (:sprintId IS NULL OR t.sprint.id = :sprintId) " +
             "AND (:priority IS NULL OR t.priority = :priority) " +
-            "AND (:keyword IS NULL OR LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            "AND (:keywordEmpty = true OR LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     List<Task> findByFilters(@Param("projectId") Long projectId,
                              @Param("status") String status,
                              @Param("assigneeId") Long assigneeId,
                              @Param("sprintId") Long sprintId,
                              @Param("priority") String priority,
-                             @Param("keyword") String keyword);
+                             @Param("keyword") String keyword,
+                             @Param("keywordEmpty") boolean keywordEmpty);
 
     long countByProjectIdAndStatus(Long projectId, String status);
 
@@ -52,4 +53,12 @@ public interface TaskRepository extends JpaRepository<Task, Long> {
     long countByAssigneeIdAndProjectIdAndStatus(Long assigneeId, Long projectId, String status);
 
     long countByAssigneeIdAndProjectId(Long assigneeId, Long projectId);
+
+    @Query("SELECT t FROM Task t WHERE t.assignee.id = :assigneeId " +
+            "AND (:status IS NULL OR t.status = :status) " +
+            "AND (:keywordEmpty = true OR LOWER(t.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    List<Task> findByAssigneeIdWithFilters(@Param("assigneeId") Long assigneeId,
+                                           @Param("status") String status,
+                                           @Param("keyword") String keyword,
+                                           @Param("keywordEmpty") boolean keywordEmpty);
 }

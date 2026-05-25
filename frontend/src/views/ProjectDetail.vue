@@ -92,6 +92,55 @@
             @task-click="openTaskDrawer"
           />
         </a-tab-pane>
+        <a-tab-pane key="members" tab="成员">
+          <div v-if="activeTab === 'members'" class="member-section">
+            <div class="member-toolbar">
+              <a-button type="primary" @click="openAddMemberModal">
+                <template #icon><UserAddOutlined /></template>
+                添加成员
+              </a-button>
+            </div>
+            <a-table :dataSource="members" :columns="memberColumns" row-key="id" :pagination="false" size="middle">
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'user'">
+                  <div class="member-user-cell">
+                    <a-avatar :size="28" :style="{ backgroundColor: '#5B9BD5', fontSize: '12px' }">
+                      {{ record.user.username.charAt(0).toUpperCase() }}
+                    </a-avatar>
+                    <span>{{ record.user.username }}</span>
+                  </div>
+                </template>
+                <template v-if="column.key === 'role'">
+                  <a-tag :color="record.role === 'OWNER' ? 'blue' : record.role === 'ADMIN' ? 'orange' : 'default'">
+                    {{ memberRoleLabel(record.role) }}
+                  </a-tag>
+                </template>
+                <template v-if="column.key === 'action'">
+                  <a-space>
+                    <a-select
+                      v-if="record.role !== 'OWNER'"
+                      :value="record.role"
+                      size="small"
+                      style="width: 100px"
+                      @change="(val: string) => handleChangeRole(record.user.id, val)"
+                    >
+                      <a-select-option value="ADMIN">管理员</a-select-option>
+                      <a-select-option value="MEMBER">成员</a-select-option>
+                      <a-select-option value="VIEWER">查看者</a-select-option>
+                    </a-select>
+                    <a-popconfirm
+                      v-if="record.role !== 'OWNER'"
+                      title="确定移除该成员？"
+                      @confirm="handleRemoveMember(record.user.id)"
+                    >
+                      <a-button type="link" danger size="small">移除</a-button>
+                    </a-popconfirm>
+                  </a-space>
+                </template>
+              </template>
+            </a-table>
+          </div>
+        </a-tab-pane>
       </a-tabs>
     </a-spin>
 
@@ -140,6 +189,46 @@
             </a-form-item>
           </a-col>
         </a-row>
+      </a-form>
+    </a-modal>
+
+    <!-- Add Member Modal -->
+    <a-modal
+      v-model:open="addMemberModalVisible"
+      title="添加项目成员（从工作空间成员中选择）"
+      @ok="handleAddMember"
+      :confirm-loading="addMemberLoading"
+    >
+      <a-form layout="vertical" style="margin-top: 16px">
+        <a-form-item label="选择成员">
+          <a-select
+            v-model:value="addMemberUserId"
+            placeholder="请选择工作空间成员"
+            show-search
+            :filter-option="filterWsMember"
+            :not-found-content="wsMembersLoading ? undefined : (candidateMembers.length === 0 ? '工作空间中无可添加的成员' : '无匹配结果')"
+          >
+            <template v-if="wsMembersLoading" #notFoundContent>
+              <a-spin size="small" />
+            </template>
+            <a-select-option v-for="m in candidateMembers" :key="m.user.id" :value="m.user.id">
+              <div class="user-search-item">
+                <a-avatar :size="22" :style="{ backgroundColor: '#5B9BD5', fontSize: '10px' }">
+                  {{ m.user.username.charAt(0).toUpperCase() }}
+                </a-avatar>
+                <span>{{ m.user.username }}</span>
+                <span class="user-search-email">{{ m.user.email }}</span>
+              </div>
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="项目角色">
+          <a-select v-model:value="addMemberRole">
+            <a-select-option value="ADMIN">管理员</a-select-option>
+            <a-select-option value="MEMBER">成员</a-select-option>
+            <a-select-option value="VIEWER">查看者</a-select-option>
+          </a-select>
+        </a-form-item>
       </a-form>
     </a-modal>
 
@@ -204,12 +293,14 @@ import {
   EditOutlined,
   PlusOutlined,
   CalendarOutlined,
-  UserOutlined
+  UserOutlined,
+  UserAddOutlined
 } from '@ant-design/icons-vue'
-import { getProject, updateProject, getProjectMembers } from '@/api/project'
+import { getProject, updateProject, getProjectMembers, addProjectMember, updateProjectMemberRole, removeProjectMember } from '@/api/project'
 import { listSprints } from '@/api/sprint'
 import { createTask } from '@/api/task'
-import type { Project, Sprint, ProjectMember } from '@/types'
+import { getWorkspaceMembers } from '@/api/workspace'
+import type { Project, Sprint, ProjectMember, WorkspaceMember } from '@/types'
 import dayjs, { type Dayjs } from 'dayjs'
 
 import KanbanBoard from '@/components/KanbanBoard.vue'
@@ -254,6 +345,25 @@ const newTaskForm = reactive({
   startDate: null as Dayjs | null,
   dueDate: null as Dayjs | null
 })
+
+// Add Member
+const addMemberModalVisible = ref(false)
+const addMemberLoading = ref(false)
+const addMemberUserId = ref<number | undefined>(undefined)
+const addMemberRole = ref('MEMBER')
+const wsMembers = ref<WorkspaceMember[]>([])
+const wsMembersLoading = ref(false)
+
+const candidateMembers = computed(() => {
+  const existingIds = new Set(members.value.map(m => m.user.id))
+  return wsMembers.value.filter(m => !existingIds.has(m.user.id))
+})
+
+const memberColumns = [
+  { title: '用户', key: 'user', dataIndex: 'user' },
+  { title: '角色', key: 'role', dataIndex: 'role', width: 120 },
+  { title: '操作', key: 'action', width: 200 }
+]
 
 // Check if we should open a task drawer from route query
 watch(() => route.query.taskId, (taskId) => {
@@ -372,6 +482,79 @@ async function handleCreateTask() {
   }
 }
 
+function memberRoleLabel(role: string): string {
+  const map: Record<string, string> = { OWNER: '拥有者', ADMIN: '管理员', MEMBER: '成员', VIEWER: '查看者' }
+  return map[role] || role
+}
+
+function openAddMemberModal() {
+  addMemberUserId.value = undefined
+  addMemberRole.value = 'MEMBER'
+  loadWorkspaceMembers()
+  addMemberModalVisible.value = true
+}
+
+function filterWsMember(input: string, option: any) {
+  const member = wsMembers.value.find(m => m.user.id === option.value)
+  if (!member) return false
+  const kw = input.toLowerCase()
+  return member.user.username.toLowerCase().includes(kw) || member.user.email.toLowerCase().includes(kw)
+}
+
+async function loadWorkspaceMembers() {
+  if (!project.value?.workspaceId) return
+  wsMembersLoading.value = true
+  try {
+    const res = await getWorkspaceMembers(project.value.workspaceId)
+    wsMembers.value = res.data
+  } catch {
+    wsMembers.value = []
+  } finally {
+    wsMembersLoading.value = false
+  }
+}
+
+async function handleAddMember() {
+  if (!addMemberUserId.value) {
+    message.warning('请选择用户')
+    return
+  }
+  addMemberLoading.value = true
+  try {
+    await addProjectMember(projectId.value, { userId: addMemberUserId.value, role: addMemberRole.value })
+    message.success('成员已添加')
+    addMemberModalVisible.value = false
+    const res = await getProjectMembers(projectId.value)
+    members.value = res.data
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '添加失败')
+  } finally {
+    addMemberLoading.value = false
+  }
+}
+
+async function handleChangeRole(uid: number, role: string) {
+  try {
+    await updateProjectMemberRole(projectId.value, uid, { role })
+    message.success('角色已更新')
+    const res = await getProjectMembers(projectId.value)
+    members.value = res.data
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '更新失败')
+  }
+}
+
+async function handleRemoveMember(uid: number) {
+  try {
+    await removeProjectMember(projectId.value, uid)
+    message.success('成员已移除')
+    const res = await getProjectMembers(projectId.value)
+    members.value = res.data
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '移除失败')
+  }
+}
+
 function statusColor(status: string): string {
   const map: Record<string, string> = { ACTIVE: 'blue', COMPLETED: 'green', PAUSED: 'orange', ARCHIVED: 'default' }
   return map[status] || 'default'
@@ -426,5 +609,32 @@ function formatDate(dateStr: string): string {
 
 .view-tabs {
   margin-top: 8px;
+}
+
+.member-section {
+  padding: 8px 0;
+}
+
+.member-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.member-user-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-search-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-search-email {
+  color: #8c8c8c;
+  font-size: 12px;
 }
 </style>

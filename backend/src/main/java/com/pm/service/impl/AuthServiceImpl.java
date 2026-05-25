@@ -10,6 +10,7 @@ import com.pm.repository.UserRepository;
 import com.pm.security.JwtTokenProvider;
 import com.pm.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -29,26 +31,32 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+        try {
+            User user = userRepository.findByUsername(request.getUsername())
+                    .orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new RuntimeException("Invalid username or password");
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                throw new RuntimeException("Invalid username or password");
+            }
+
+            if (user.getStatus() != Constants.UserStatus.ACTIVE.getValue()) {
+                throw new RuntimeException("Account is not active");
+            }
+
+            String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+            storeTokens(user.getId(), accessToken, refreshToken);
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .user(toUserResponse(user))
+                    .build();
+        }catch (Exception e){
+            log.error("Login Exception", e);
         }
-
-        if (user.getStatus() != Constants.UserStatus.ACTIVE.getValue()) {
-            throw new RuntimeException("Account is not active");
-        }
-
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-
-        storeTokens(user.getId(), accessToken, refreshToken);
-
         return AuthResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .user(toUserResponse(user))
                 .build();
     }
 

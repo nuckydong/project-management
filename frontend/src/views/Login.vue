@@ -90,7 +90,7 @@ async function handleLogin() {
     await authStore.login(formState)
     message.success('登录成功')
     const redirect = (route.query.redirect as string) || '/'
-    router.push(redirect)
+    await router.push(redirect)
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : '登录失败'
     message.error(msg)

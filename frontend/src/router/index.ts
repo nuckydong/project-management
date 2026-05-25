@@ -37,6 +37,16 @@ const router = createRouter({
           component: () => import('@/views/ProjectDetail.vue')
         },
         {
+          path: 'workspaces',
+          name: 'WorkspaceList',
+          component: () => import('@/views/WorkspaceList.vue')
+        },
+        {
+          path: 'my-tasks',
+          name: 'MyTasks',
+          component: () => import('@/views/MyTasks.vue')
+        },
+        {
           path: 'documents',
           name: 'DocumentCenter',
           component: () => import('@/views/DocumentCenter.vue')
@@ -50,6 +60,11 @@ const router = createRouter({
           path: 'settings',
           name: 'Settings',
           component: () => import('@/views/Settings.vue')
+        },
+        {
+          path: 'admin/users',
+          name: 'UserManagement',
+          component: () => import('@/views/UserManagement.vue')
         }
       ]
     }
@@ -62,6 +77,8 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth !== false && !authStore.accessToken) {
     next({ path: '/login', query: { redirect: to.fullPath } })
   } else if ((to.path === '/login' || to.path === '/register') && authStore.accessToken) {
+    next({ path: '/' })
+  } else if ((to.path.startsWith('/admin/') || to.path === '/workspaces') && authStore.user?.username !== 'admin') {
     next({ path: '/' })
   } else {
     next()

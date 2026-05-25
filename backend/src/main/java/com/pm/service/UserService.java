@@ -5,7 +5,17 @@ import com.pm.dto.request.UserUpdateRequest;
 import com.pm.dto.response.UserResponse;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 public interface UserService {
+
+    List<UserResponse> searchUsers(String keyword);
+
+    List<UserResponse> listAllUsers();
+
+    UserResponse updateUserStatus(Long userId, Short status);
+
+    void resetPassword(Long userId, String newPassword);
 
     UserResponse getProfile(Long userId);
 

@@ -15,6 +15,10 @@ export function listTasks(projectId: number, params?: TaskQueryRequest) {
   return request.get<unknown, Result<PageResult<Task>>>(`/projects/${projectId}/tasks`, { params })
 }
 
+export function listMyTasks(params?: { status?: string; keyword?: string }) {
+  return request.get<unknown, Result<Task[]>>('/my/tasks', { params })
+}
+
 export function createTask(projectId: number, data: TaskCreateRequest) {
   return request.post<unknown, Result<Task>>(`/projects/${projectId}/tasks`, data)
 }

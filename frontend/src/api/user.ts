@@ -1,6 +1,22 @@
 import request from './request'
 import type { Result, User, UserUpdateRequest, PasswordChangeRequest } from '@/types'
 
+export function searchUsers(keyword?: string) {
+  return request.get<unknown, Result<User[]>>('/users/search', { params: { keyword } })
+}
+
+export function listAllUsers() {
+  return request.get<unknown, Result<User[]>>('/users/list')
+}
+
+export function updateUserStatus(id: number, status: number) {
+  return request.put<unknown, Result<User>>(`/users/${id}/status`, { status })
+}
+
+export function resetUserPassword(id: number, newPassword: string) {
+  return request.put<unknown, Result<void>>(`/users/${id}/reset-password`, { newPassword })
+}
+
 export function getProfile() {
   return request.get<unknown, Result<User>>('/users/profile')
 }
