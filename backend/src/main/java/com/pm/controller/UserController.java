@@ -42,6 +42,23 @@ public class UserController {
         return Result.success();
     }
 
+    @PostMapping("/create")
+    public Result<UserResponse> create(@RequestBody java.util.Map<String, String> body) {
+        return Result.success(userService.createUser(
+                body.get("username"), body.get("email"), body.get("password")));
+    }
+
+    @PutMapping("/{id}/edit")
+    public Result<UserResponse> edit(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
+        return Result.success(userService.updateUser(id, body.get("username"), body.get("email")));
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return Result.success();
+    }
+
     @GetMapping("/profile")
     public Result<UserResponse> getProfile() {
         return Result.success(userService.getProfile(securityUtil.getCurrentUserId()));

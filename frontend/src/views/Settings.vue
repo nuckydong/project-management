@@ -80,23 +80,23 @@
 
           <a-divider />
 
-          <div class="settings-block">
-            <h4>关于</h4>
-            <div class="about-info">
-              <div class="about-row">
-                <span class="about-label">应用名称</span>
-                <span class="about-value">ProjectHub</span>
-              </div>
-              <div class="about-row">
-                <span class="about-label">版本号</span>
-                <span class="about-value">1.0.0</span>
-              </div>
-              <div class="about-row">
-                <span class="about-label">技术栈</span>
-                <span class="about-value">Vue 3 + TypeScript + Ant Design Vue</span>
-              </div>
-            </div>
-          </div>
+<!--          <div class="settings-block">-->
+<!--            <h4>关于</h4>-->
+<!--            <div class="about-info">-->
+<!--              <div class="about-row">-->
+<!--                <span class="about-label">应用名称</span>-->
+<!--                <span class="about-value">ProjectHub</span>-->
+<!--              </div>-->
+<!--              <div class="about-row">-->
+<!--                <span class="about-label">版本号</span>-->
+<!--                <span class="about-value">1.0.0</span>-->
+<!--              </div>-->
+<!--              <div class="about-row">-->
+<!--                <span class="about-label">技术栈</span>-->
+<!--                <span class="about-value">Vue 3 + TypeScript + Ant Design Vue</span>-->
+<!--              </div>-->
+<!--            </div>-->
+<!--          </div>-->
         </div>
       </a-tab-pane>
     </a-tabs>

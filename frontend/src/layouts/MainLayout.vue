@@ -17,9 +17,8 @@
       }"
     >
       <div class="logo">
-        <img src="" alt="" style="display: none" />
+        <img src="/favicon.svg" alt="logo" class="logo-icon" />
         <h1 v-if="!collapsed" class="logo-text">项目管理系统</h1>
-        <h1 v-else class="logo-text-mini">PM</h1>
       </div>
       <a-menu
         v-model:selectedKeys="selectedKeys"
@@ -197,22 +196,22 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   border-bottom: 1px solid #f0f0f0;
 }
 
+.logo-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
 .logo-text {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: #2c3e50;
   margin: 0;
   white-space: nowrap;
-}
-
-.logo-text-mini {
-  font-size: 20px;
-  font-weight: 700;
-  color: #2c3e50;
-  margin: 0;
 }
 
 .trigger {

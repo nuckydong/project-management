@@ -8,6 +8,9 @@ const request = axios.create({
   timeout: 30000
 })
 
+let isRefreshing = false
+let pendingRequests: Array<(token: string) => void> = []
+
 request.interceptors.request.use(
   (config) => {
     const authStore = useAuthStore()
@@ -25,7 +28,7 @@ request.interceptors.response.use(
   (response) => {
     const res = response.data as Result<unknown>
     if (res.code !== 200) {
-      return Promise.reject(new Error(res.message || 'Request failed'))
+      return Promise.reject(new Error(res.message || '请求失败'))
     }
     return response.data
   },
@@ -33,28 +36,49 @@ request.interceptors.response.use(
     const originalRequest = error.config
 
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-
       const authStore = useAuthStore()
-      if (authStore.refreshToken) {
-        try {
-          await authStore.doRefreshToken()
-          originalRequest.headers.Authorization = `Bearer ${authStore.accessToken}`
-          return request(originalRequest)
-        } catch {
-          authStore.logout()
-          router.push('/login')
-          return Promise.reject(error)
-        }
-      } else {
-        authStore.logout()
-        router.push('/login')
+
+      if (!authStore.refreshToken) {
+        forceLogout()
+        return Promise.reject(error)
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve) => {
+          pendingRequests.push((token: string) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`
+            resolve(request(originalRequest))
+          })
+        })
+      }
+
+      originalRequest._retry = true
+      isRefreshing = true
+
+      try {
+        const res = await authStore.doRefreshToken()
+        pendingRequests.forEach(cb => cb(res.accessToken))
+        pendingRequests = []
+        originalRequest.headers.Authorization = `Bearer ${authStore.accessToken}`
+        return request(originalRequest)
+      } catch {
+        pendingRequests = []
+        forceLogout()
+        return Promise.reject(error)
+      } finally {
+        isRefreshing = false
       }
     }
 
-    const message = error.response?.data?.message || error.message || 'Network error'
+    const message = error.response?.data?.message || error.message || '网络错误'
     return Promise.reject(new Error(message))
   }
 )
+
+function forceLogout() {
+  const authStore = useAuthStore()
+  authStore.forceClear()
+  router.push('/login')
+}
 
 export default request

@@ -12,6 +12,12 @@ public interface MinioService {
 
     String getPresignedUrl(String bucket, String objectName);
 
+    String getPubDocUrl(String objectName);
+
+    String getPubAvatarsUrl(String objectName);
+
+    String getPubAttachmentsUrl(String objectName);
+
     void deleteFile(String bucket, String objectName);
 
     void initBuckets();

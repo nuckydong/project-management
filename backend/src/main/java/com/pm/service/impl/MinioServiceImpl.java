@@ -1,5 +1,6 @@
 package com.pm.service.impl;
 
+import com.pm.config.MinioConfig;
 import com.pm.service.MinioService;
 import com.pm.util.MinioUtil;
 import lombok.RequiredArgsConstructor;
@@ -16,31 +17,51 @@ public class MinioServiceImpl implements MinioService {
 
     private final MinioUtil minioUtil;
 
+    private final MinioConfig minioConfig;
+
     @Override
     public String uploadDocument(Long projectId, MultipartFile file) {
         String objectName = "projects/" + projectId + "/docs/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
-        minioUtil.uploadFile(minioUtil.getDocsBucket(), objectName, file);
+        minioUtil.uploadFile(minioConfig.getBucketsDocs(), objectName, file);
         return objectName;
     }
 
     @Override
     public String uploadAttachment(Long taskId, MultipartFile file) {
         String objectName = "tasks/" + taskId + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
-        minioUtil.uploadFile(minioUtil.getAttachmentsBucket(), objectName, file);
+        minioUtil.uploadFile(minioConfig.getBucketsAttachments(), objectName, file);
         return objectName;
     }
 
     @Override
     public String uploadAvatar(Long userId, MultipartFile file) {
         String objectName = "users/" + userId + "/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
-        minioUtil.uploadFile(minioUtil.getAvatarsBucket(), objectName, file);
+        minioUtil.uploadFile(minioConfig.getBucketsAvatars(), objectName, file);
         return objectName;
     }
 
+    // TODO  修改替换
+    @Deprecated
     @Override
     public String getPresignedUrl(String bucket, String objectName) {
         return minioUtil.getPresignedUrl(bucket, objectName);
     }
+
+    @Override
+    public String getPubDocUrl(String objectName) {
+        return minioConfig.getEndpoint() + "/" + minioConfig.getBucketsDocs() + "/" + objectName;
+    }
+
+    @Override
+    public String getPubAvatarsUrl(String objectName) {
+        return minioConfig.getEndpoint() + "/" + minioConfig.getBucketsAvatars() + "/" + objectName;
+    }
+
+    @Override
+    public String getPubAttachmentsUrl(String objectName) {
+        return minioConfig.getEndpoint() + "/" + minioConfig.getBucketsAttachments() + "/" + objectName;
+    }
+
 
     @Override
     public void deleteFile(String bucket, String objectName) {
@@ -49,9 +70,9 @@ public class MinioServiceImpl implements MinioService {
 
     @Override
     public void initBuckets() {
-        minioUtil.createBucket(minioUtil.getDocsBucket());
-        minioUtil.createBucket(minioUtil.getAttachmentsBucket());
-        minioUtil.createBucket(minioUtil.getAvatarsBucket());
+        minioUtil.createBucket(minioConfig.getBucketsDocs());
+        minioUtil.createBucket(minioConfig.getBucketsAttachments());
+        minioUtil.createBucket(minioConfig.getBucketsAvatars());
         log.info("All MinIO buckets initialized");
     }
 }

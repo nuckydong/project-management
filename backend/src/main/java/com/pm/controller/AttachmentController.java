@@ -32,4 +32,14 @@ public class AttachmentController {
         attachmentService.delete(id);
         return Result.success();
     }
+
+    @GetMapping("/api/attachments/{id}/preview")
+    public Result<String> preview(@PathVariable Long id) {
+        return Result.success(attachmentService.getPreviewUrl(id));
+    }
+
+    @GetMapping("/api/attachments/{id}/download")
+    public Result<String> download(@PathVariable Long id) {
+        return Result.success(attachmentService.getDownloadUrl(id));
+    }
 }

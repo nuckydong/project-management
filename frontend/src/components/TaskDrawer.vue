@@ -129,6 +129,14 @@
                   <span class="att-name">{{ att.fileName }}</span>
                   <span class="att-size">{{ formatSize(att.fileSize) }}</span>
                   <span class="att-user">{{ att.uploadedBy?.username }}</span>
+                  <span class="att-actions">
+                    <a-button type="link" size="small" @click="handlePreviewAttachment(att.id)">
+                      <EyeOutlined /> 预览
+                    </a-button>
+                    <a-button type="link" size="small" @click="handleDownloadAttachment(att.id, att.fileName)">
+                      <DownloadOutlined /> 下载
+                    </a-button>
+                  </span>
                 </div>
                 <a-empty v-if="!attachments.length" description="暂无附件" :image-style="{ height: '40px' }" />
               </div>
@@ -165,10 +173,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { UploadOutlined, PaperClipOutlined } from '@ant-design/icons-vue'
+import { UploadOutlined, PaperClipOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons-vue'
 import { getTask, updateTask, updateTaskStatus, assignTask } from '@/api/task'
 import { listComments, createComment } from '@/api/comment'
-import { listAttachments, uploadAttachment, deleteAttachment } from '@/api/attachment'
+import { listAttachments, uploadAttachment, deleteAttachment, previewAttachment, downloadAttachment } from '@/api/attachment'
 import type { Task, Comment, Attachment, ActivityLog, ProjectMember } from '@/types'
 import type { UploadFile } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -214,7 +222,7 @@ watch(() => props.visible, async (vis) => {
   if (vis && props.taskId) {
     await loadTaskData()
   }
-})
+}, { immediate: true })
 
 async function loadTaskData() {
   if (!props.taskId) return
@@ -345,6 +353,30 @@ async function handleRemoveAttachment(file: UploadFile) {
     } catch (err: unknown) {
       message.error(err instanceof Error ? err.message : '删除失败')
     }
+  }
+}
+
+async function handlePreviewAttachment(id: number) {
+  try {
+    const res = await previewAttachment(id)
+    window.open(res.data, '_blank')
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '获取预览链接失败')
+  }
+}
+
+async function handleDownloadAttachment(id: number, fileName: string) {
+  try {
+    const res = await downloadAttachment(id)
+    const link = document.createElement('a')
+    link.href = res.data
+    link.download = fileName
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '获取下载链接失败')
   }
 }
 

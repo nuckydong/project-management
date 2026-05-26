@@ -12,4 +12,8 @@ public interface AttachmentService {
     List<AttachmentResponse> list(Long taskId);
 
     void delete(Long id);
+
+    String getPreviewUrl(Long id);
+
+    String getDownloadUrl(Long id);
 }

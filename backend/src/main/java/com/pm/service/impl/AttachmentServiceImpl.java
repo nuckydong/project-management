@@ -63,9 +63,22 @@ public class AttachmentServiceImpl implements AttachmentService {
         attachmentRepository.delete(attachment);
     }
 
-    private AttachmentResponse toAttachmentResponse(Attachment attachment) {
-        String downloadUrl = minioService.getPresignedUrl("attachments", attachment.getFilePath());
+    @Override
+    public String getPreviewUrl(Long id) {
+        Attachment attachment = attachmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Attachment not found"));
+        return minioService.getPubAttachmentsUrl(attachment.getFilePath());
+    }
 
+    @Override
+    public String getDownloadUrl(Long id) {
+        Attachment attachment = attachmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Attachment not found"));
+        return minioService.getPubAttachmentsUrl(attachment.getFilePath());
+    }
+
+    private AttachmentResponse toAttachmentResponse(Attachment attachment) {
+        String downloadUrl = minioService.getPubAttachmentsUrl(attachment.getFilePath());
         return AttachmentResponse.builder()
                 .id(attachment.getId())
                 .taskId(attachment.getTask().getId())

@@ -1,11 +1,10 @@
 package com.pm.util;
 
+import com.pm.config.MinioConfig;
 import io.minio.*;
 import io.minio.http.Method;
-import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,27 +18,6 @@ public class MinioUtil {
 
     private final MinioClient minioClient;
 
-    @Value("${minio.buckets.docs}")
-    private String docsBucket;
-
-    @Value("${minio.buckets.attachments}")
-    private String attachmentsBucket;
-
-    @Value("${minio.buckets.avatars}")
-    private String avatarsBucket;
-
-    public String getDocsBucket() {
-        return docsBucket;
-    }
-
-    public String getAttachmentsBucket() {
-        return attachmentsBucket;
-    }
-
-    public String getAvatarsBucket() {
-        return avatarsBucket;
-    }
-
     public void createBucket(String bucketName) {
         try {
             boolean exists = minioClient.bucketExists(BucketExistsArgs.builder()
@@ -51,21 +29,47 @@ public class MinioUtil {
                         .build());
                 log.info("Created bucket: {}", bucketName);
             }
+            setBucketPublicRead(bucketName);
         } catch (Exception e) {
             log.error("Error creating bucket {}: {}", bucketName, e.getMessage());
             throw new RuntimeException("Failed to create bucket: " + bucketName, e);
         }
     }
 
+    public void setBucketPublicRead(String bucketName) {
+        String policy = """
+                {
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {"AWS": ["*"]},
+                      "Action": ["s3:GetObject"],
+                      "Resource": ["arn:aws:s3:::%s/*"]
+                    }
+                  ],
+                  "Version": "2012-10-17"
+                }
+                """.formatted(bucketName);
+        try {
+            minioClient.setBucketPolicy(SetBucketPolicyArgs.builder()
+                    .bucket(bucketName)
+                    .config(policy)
+                    .build());
+        } catch (Exception e) {
+            log.warn("设置桶公共读策略失败 {}: {}", bucketName, e.getMessage());
+        }
+    }
+
     public void uploadFile(String bucketName, String objectName, MultipartFile file) {
         try (InputStream inputStream = file.getInputStream()) {
+            log.info("Uploaded file: {}/{} start", bucketName, objectName);
             minioClient.putObject(PutObjectArgs.builder()
                     .bucket(bucketName)
                     .object(objectName)
                     .stream(inputStream, file.getSize(), -1)
                     .contentType(file.getContentType())
                     .build());
-            log.info("Uploaded file: {}/{}", bucketName, objectName);
+            log.info("Uploaded file: {}/{} success!", bucketName, objectName);
         } catch (Exception e) {
             log.error("Error uploading file to {}/{}: {}", bucketName, objectName, e.getMessage());
             throw new RuntimeException("Failed to upload file", e);

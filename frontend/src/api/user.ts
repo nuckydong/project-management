@@ -17,6 +17,18 @@ export function resetUserPassword(id: number, newPassword: string) {
   return request.put<unknown, Result<void>>(`/users/${id}/reset-password`, { newPassword })
 }
 
+export function createUser(username: string, email: string, password: string) {
+  return request.post<unknown, Result<User>>('/users/create', { username, email, password })
+}
+
+export function updateUser(id: number, username: string, email: string) {
+  return request.put<unknown, Result<User>>(`/users/${id}/edit`, { username, email })
+}
+
+export function deleteUser(id: number) {
+  return request.delete<unknown, Result<void>>(`/users/${id}`)
+}
+
 export function getProfile() {
   return request.get<unknown, Result<User>>('/users/profile')
 }

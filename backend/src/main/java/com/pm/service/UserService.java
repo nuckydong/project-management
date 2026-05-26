@@ -13,6 +13,12 @@ public interface UserService {
 
     List<UserResponse> listAllUsers();
 
+    UserResponse createUser(String username, String email, String password);
+
+    UserResponse updateUser(Long userId, String username, String email);
+
+    void deleteUser(Long userId);
+
     UserResponse updateUserStatus(Long userId, Short status);
 
     void resetPassword(Long userId, String newPassword);

@@ -16,3 +16,11 @@ export function uploadAttachment(taskId: number, file: File) {
 export function deleteAttachment(attachmentId: number) {
   return request.delete<unknown, Result<void>>(`/attachments/${attachmentId}`)
 }
+
+export function previewAttachment(attachmentId: number) {
+  return request.get<unknown, Result<string>>(`/attachments/${attachmentId}/preview`)
+}
+
+export function downloadAttachment(attachmentId: number) {
+  return request.get<unknown, Result<string>>(`/attachments/${attachmentId}/download`)
+}

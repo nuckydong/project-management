@@ -2,13 +2,18 @@
   <div class="user-management-page">
     <div class="page-header">
       <h2>用户管理</h2>
-      <a-input-search
-        v-model:value="searchKeyword"
-        placeholder="搜索用户名或邮箱..."
-        style="width: 280px"
-        @search="onSearch"
-        allow-clear
-      />
+      <a-space>
+        <a-input-search
+          v-model:value="searchKeyword"
+          placeholder="搜索用户名或邮箱..."
+          style="width: 240px"
+          allow-clear
+        />
+        <a-button type="primary" @click="openCreateModal">
+          <template #icon><PlusOutlined /></template>
+          新建用户
+        </a-button>
+      </a-space>
     </div>
 
     <a-table
@@ -38,7 +43,10 @@
           {{ formatDate(record.createdAt) }}
         </template>
         <template v-if="column.key === 'action'">
-          <a-space>
+          <a-space v-if="record.username === 'admin'">
+            <a-tag color="blue">超级管理员</a-tag>
+          </a-space>
+          <a-space v-else>
             <a-select
               :value="record.status"
               size="small"
@@ -49,11 +57,35 @@
               <a-select-option :value="2">禁用</a-select-option>
               <a-select-option :value="0">未激活</a-select-option>
             </a-select>
+            <a-button type="link" size="small" @click="openEditModal(record)">编辑</a-button>
             <a-button type="link" size="small" @click="openResetModal(record)">重置密码</a-button>
+            <a-popconfirm title="确定删除该用户？" @confirm="handleDelete(record.id)">
+              <a-button type="link" danger size="small">删除</a-button>
+            </a-popconfirm>
           </a-space>
         </template>
       </template>
     </a-table>
+
+    <!-- Create / Edit User Modal -->
+    <a-modal
+      v-model:open="formModalVisible"
+      :title="editingUser ? '编辑用户' : '新建用户'"
+      @ok="handleFormSubmit"
+      :confirm-loading="formLoading"
+    >
+      <a-form layout="vertical" style="margin-top: 16px">
+        <a-form-item label="用户名" required>
+          <a-input v-model:value="formData.username" placeholder="请输入用户名" />
+        </a-form-item>
+        <a-form-item label="邮箱" required>
+          <a-input v-model:value="formData.email" placeholder="请输入邮箱" />
+        </a-form-item>
+        <a-form-item v-if="!editingUser" label="密码" required>
+          <a-input-password v-model:value="formData.password" placeholder="请输入密码（至少6位）" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
 
     <!-- Reset Password Modal -->
     <a-modal
@@ -78,15 +110,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { message } from 'ant-design-vue'
-import { listAllUsers, updateUserStatus, resetUserPassword } from '@/api/user'
+import { PlusOutlined } from '@ant-design/icons-vue'
+import { listAllUsers, updateUserStatus, resetUserPassword, createUser, updateUser, deleteUser } from '@/api/user'
 import type { User } from '@/types'
 import dayjs from 'dayjs'
 
 const loading = ref(false)
 const users = ref<User[]>([])
 const searchKeyword = ref('')
+
+const formModalVisible = ref(false)
+const formLoading = ref(false)
+const editingUser = ref<User | null>(null)
+const formData = reactive({ username: '', email: '', password: '' })
 
 const resetModalVisible = ref(false)
 const resetLoading = ref(false)
@@ -98,7 +136,7 @@ const columns = [
   { title: '用户', key: 'user', width: 260 },
   { title: '状态', key: 'status', width: 120 },
   { title: '注册时间', key: 'createdAt', dataIndex: 'createdAt', width: 160 },
-  { title: '操作', key: 'action', width: 220 }
+  { title: '操作', key: 'action', width: 300 }
 ]
 
 const filteredUsers = computed(() => {
@@ -125,8 +163,47 @@ async function loadUsers() {
   }
 }
 
-function onSearch() {
-  // filteredUsers is computed, auto-reacts
+function openCreateModal() {
+  editingUser.value = null
+  formData.username = ''
+  formData.email = ''
+  formData.password = ''
+  formModalVisible.value = true
+}
+
+function openEditModal(user: User) {
+  editingUser.value = user
+  formData.username = user.username
+  formData.email = user.email
+  formData.password = ''
+  formModalVisible.value = true
+}
+
+async function handleFormSubmit() {
+  if (!formData.username || !formData.email) {
+    message.warning('请填写用户名和邮箱')
+    return
+  }
+  if (!editingUser.value && (!formData.password || formData.password.length < 6)) {
+    message.warning('密码至少6位')
+    return
+  }
+  formLoading.value = true
+  try {
+    if (editingUser.value) {
+      await updateUser(editingUser.value.id, formData.username, formData.email)
+      message.success('用户已更新')
+    } else {
+      await createUser(formData.username, formData.email, formData.password)
+      message.success('用户已创建')
+    }
+    formModalVisible.value = false
+    loadUsers()
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '操作失败')
+  } finally {
+    formLoading.value = false
+  }
 }
 
 async function handleStatusChange(userId: number, status: number) {
@@ -165,6 +242,16 @@ async function handleResetPassword() {
     message.error(err instanceof Error ? err.message : '重置失败')
   } finally {
     resetLoading.value = false
+  }
+}
+
+async function handleDelete(userId: number) {
+  try {
+    await deleteUser(userId)
+    message.success('用户已删除')
+    loadUsers()
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '删除失败')
   }
 }
 
