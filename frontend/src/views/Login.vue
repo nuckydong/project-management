@@ -54,8 +54,9 @@
       </a-form>
 
       <div class="login-footer">
-        还没有账号？
-        <router-link to="/register" class="login-link">立即注册</router-link>
+        <!-- 暂不开放注册，由管理员统一添加用户 -->
+        <!-- 还没有账号？
+        <router-link to="/register" class="login-link">立即注册</router-link> -->
       </div>
     </div>
   </div>

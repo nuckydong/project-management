@@ -10,12 +10,13 @@ const router = createRouter({
       component: () => import('@/views/Login.vue'),
       meta: { requiresAuth: false }
     },
-    {
-      path: '/register',
-      name: 'Register',
-      component: () => import('@/views/Register.vue'),
-      meta: { requiresAuth: false }
-    },
+    // 注册功能暂不开放，由管理员在用户管理中统一添加
+    // {
+    //   path: '/register',
+    //   name: 'Register',
+    //   component: () => import('@/views/Register.vue'),
+    //   meta: { requiresAuth: false }
+    // },
     {
       path: '/',
       component: () => import('@/layouts/MainLayout.vue'),
@@ -76,7 +77,7 @@ router.beforeEach((to, _from, next) => {
 
   if (to.meta.requiresAuth !== false && !authStore.accessToken) {
     next({ path: '/login', query: { redirect: to.fullPath } })
-  } else if ((to.path === '/login' || to.path === '/register') && authStore.accessToken) {
+  } else if (to.path === '/login' && authStore.accessToken) {
     next({ path: '/' })
   } else if ((to.path.startsWith('/admin/') || to.path === '/workspaces') && authStore.user?.username !== 'admin') {
     next({ path: '/' })
