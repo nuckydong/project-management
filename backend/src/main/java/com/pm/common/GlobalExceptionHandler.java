@@ -1,5 +1,6 @@
 package com.pm.common;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -11,45 +12,45 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.OK)
     public Result<Void> handleValidationException(MethodArgumentNotValidException ex) {
         String message = ex.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        return Result.error(400, message);
+        log.warn("参数校验失败: {}", message);
+        return Result.error(-1, message);
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    @ResponseStatus(HttpStatus.OK)
     public Result<Void> handleBadCredentialsException(BadCredentialsException ex) {
-        return Result.error(401, "Invalid username or password");
+        log.warn("认证失败: {}", ex.getMessage());
+        return Result.error(-1, "用户名或密码错误");
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    @ResponseStatus(HttpStatus.FORBIDDEN)
+    @ResponseStatus(HttpStatus.OK)
     public Result<Void> handleAccessDeniedException(AccessDeniedException ex) {
-        return Result.error(403, "Access denied");
-    }
-
-    @ExceptionHandler(IllegalArgumentException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Result<Void> handleIllegalArgumentException(IllegalArgumentException ex) {
-        return Result.error(400, ex.getMessage());
+        log.warn("权限不足: {}", ex.getMessage());
+        return Result.error(-1, "权限不足");
     }
 
     @ExceptionHandler(RuntimeException.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    @ResponseStatus(HttpStatus.OK)
     public Result<Void> handleRuntimeException(RuntimeException ex) {
-        return Result.error(500, ex.getMessage());
+        log.error("业务异常: {}", ex.getMessage(), ex);
+        return Result.error(-1, ex.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception ex) {
-        return Result.error(500, "Internal server error");
+        log.error("系统异常: {}", ex.getMessage(), ex);
+        return Result.error(-1, "系统繁忙，请稍后重试");
     }
 }

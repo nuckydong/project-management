@@ -31,32 +31,26 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public AuthResponse login(LoginRequest request) {
-        try {
-            User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+        User user = userRepository.findByUsername(request.getUsername())
+                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
-            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                throw new RuntimeException("Invalid username or password");
-            }
-
-            if (user.getStatus() != Constants.UserStatus.ACTIVE.getValue()) {
-                throw new RuntimeException("Account is not active");
-            }
-
-            String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-
-            storeTokens(user.getId(), accessToken, refreshToken);
-
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .user(toUserResponse(user))
-                    .build();
-        }catch (Exception e){
-            log.error("Login Exception", e);
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new RuntimeException("Invalid username or password");
         }
+
+        if (user.getStatus() != Constants.UserStatus.ACTIVE.getValue()) {
+            throw new RuntimeException("Account is not active");
+        }
+
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+        storeTokens(user.getId(), accessToken, refreshToken);
+
         return AuthResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .user(toUserResponse(user))
                 .build();
     }
 
