@@ -19,7 +19,7 @@ public interface TaskService {
 
     TaskResponse create(Long projectId, Long userId, TaskCreateRequest request);
 
-    TaskResponse update(Long id, TaskUpdateRequest request);
+    TaskResponse update(Long id, Long userId, TaskUpdateRequest request);
 
     void delete(Long id);
 

@@ -201,6 +201,8 @@ public class ReportServiceImpl implements ReportService {
                 .id(log.getId())
                 .projectId(log.getProject().getId())
                 .taskId(log.getTask() != null ? log.getTask().getId() : null)
+                .projectName(log.getProject().getName())
+                .taskTitle(log.getTask() != null ? log.getTask().getTitle() : null)
                 .user(toUserResponse(log.getUser()))
                 .action(log.getAction())
                 .detail(log.getDetail())

@@ -16,6 +16,8 @@ public class ActivityLogResponse {
     private Long id;
     private Long projectId;
     private Long taskId;
+    private String projectName;
+    private String taskTitle;
     private UserResponse user;
     private String action;
     private String detail;

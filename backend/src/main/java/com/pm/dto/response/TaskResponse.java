@@ -28,6 +28,7 @@ public class TaskResponse {
     private LocalDate startDate;
     private LocalDate dueDate;
     private Integer sortOrder;
+    private Integer progress;
     private List<TagResponse> tags;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

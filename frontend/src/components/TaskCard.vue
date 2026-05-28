@@ -1,5 +1,9 @@
 <template>
   <div class="task-card" @click="$emit('click', task.id)">
+    <!-- Overdue alert -->
+    <div v-if="isOverdue" class="overdue-alert">
+      <ExclamationCircleFilled />
+    </div>
     <div class="task-card-header">
       <span class="task-title">{{ task.title }}</span>
     </div>
@@ -23,11 +27,16 @@
         {{ task.assignee.username.charAt(0).toUpperCase() }}
       </a-avatar>
     </div>
+    <div class="task-card-progress">
+      <ProgressSlider :progress="task.progress ?? 0" size="mini" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { ExclamationCircleFilled } from '@ant-design/icons-vue'
+import ProgressSlider from './ProgressSlider.vue'
 import type { Task } from '@/types'
 import dayjs from 'dayjs'
 
@@ -41,7 +50,8 @@ defineEmits<{
 
 const isOverdue = computed(() => {
   if (!props.task.dueDate) return false
-  return dayjs(props.task.dueDate).isBefore(dayjs(), 'day')
+  if (props.task.status === 'DONE') return false
+  return dayjs(props.task.dueDate).isBefore(dayjs(), 'day') && (props.task.progress ?? 0) < 100
 })
 
 const formattedDueDate = computed(() => {
@@ -52,6 +62,7 @@ const formattedDueDate = computed(() => {
 
 <style scoped>
 .task-card {
+  position: relative;
   background: #fff;
   border: 1px solid #e8e8e8;
   border-radius: 6px;
@@ -99,6 +110,10 @@ const formattedDueDate = computed(() => {
   gap: 6px;
 }
 
+.task-card-progress {
+  margin-top: 6px;
+}
+
 .priority-dot {
   width: 8px;
   height: 8px;
@@ -130,5 +145,39 @@ const formattedDueDate = computed(() => {
 .task-due.overdue {
   color: #ff4d4f;
   font-weight: 500;
+}
+
+/* Overdue alert */
+.overdue-alert {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  background: #ff4d4f;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  animation: pulse-alert 2s infinite;
+  z-index: 1;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.4);
+}
+
+@keyframes pulse-alert {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 </style>

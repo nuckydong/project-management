@@ -52,4 +52,7 @@ public class Task extends BaseEntity {
 
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
+
+    @Column(name = "progress")
+    private Integer progress = 0;
 }

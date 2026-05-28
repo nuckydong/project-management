@@ -143,6 +143,7 @@ export interface Task {
   startDate: string | null
   dueDate: string | null
   sortOrder: number | null
+  progress: number
   tags: Tag[]
   createdAt: string
   updatedAt: string
@@ -168,6 +169,7 @@ export interface TaskUpdateRequest {
   startDate?: string
   dueDate?: string
   sortOrder?: number
+  progress?: number
   sprintId?: number
   tagIds?: number[]
 }
@@ -297,6 +299,8 @@ export interface ActivityLog {
   id: number
   projectId: number
   taskId: number | null
+  projectName: string
+  taskTitle: string | null
   user: User
   action: string
   detail: string | null

@@ -49,6 +49,10 @@
               {{ s.name }}
             </a-select-option>
           </a-select>
+          <a-button @click="openSprintModal">
+            <template #icon><ThunderboltOutlined /></template>
+            管理冲刺
+          </a-button>
         </div>
         <div class="toolbar-right">
           <a-button type="primary" @click="openNewTask">
@@ -249,6 +253,15 @@
         </a-form-item>
         <a-row :gutter="16">
           <a-col :span="12">
+            <a-form-item label="冲刺">
+              <a-select v-model:value="newTaskForm.sprintId" placeholder="不选择则为非冲刺任务" allow-clear>
+                <a-select-option v-for="s in sprints" :key="s.id" :value="s.id">
+                  {{ s.name }}
+                </a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item label="优先级">
               <a-select v-model:value="newTaskForm.priority">
                 <a-select-option value="LOW">低</a-select-option>
@@ -258,6 +271,8 @@
               </a-select>
             </a-form-item>
           </a-col>
+        </a-row>
+        <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="负责人">
               <a-select v-model:value="newTaskForm.assigneeId" placeholder="选择负责人" allow-clear>
@@ -282,6 +297,77 @@
         </a-row>
       </a-form>
     </a-modal>
+
+    <!-- Sprint Management Modal -->
+    <a-modal
+      v-model:open="sprintModalVisible"
+      title="管理冲刺"
+      :footer="null"
+      width="700px"
+    >
+      <div class="sprint-modal-content">
+        <div class="sprint-modal-toolbar">
+          <a-button type="primary" size="small" @click="openNewSprintForm">
+            <template #icon><PlusOutlined /></template>
+            新建冲刺
+          </a-button>
+        </div>
+
+        <!-- New Sprint Form (inline) -->
+        <div v-if="showSprintForm" class="sprint-form">
+          <a-form layout="inline" style="gap: 8px; flex-wrap: wrap">
+            <a-form-item label="名称">
+              <a-input v-model:value="sprintForm.name" style="width: 140px" size="small" />
+            </a-form-item>
+            <a-form-item label="目标">
+              <a-input v-model:value="sprintForm.goal" style="width: 160px" size="small" placeholder="可选" />
+            </a-form-item>
+            <a-form-item label="开始">
+              <a-date-picker v-model:value="sprintForm.startDate" size="small" />
+            </a-form-item>
+            <a-form-item label="结束">
+              <a-date-picker v-model:value="sprintForm.endDate" size="small" />
+            </a-form-item>
+            <a-form-item>
+              <a-button type="primary" size="small" :loading="sprintFormLoading" @click="handleSaveSprint">
+                {{ editingSprintId ? '保存' : '创建' }}
+              </a-button>
+              <a-button size="small" style="margin-left: 4px" @click="cancelSprintForm">取消</a-button>
+            </a-form-item>
+          </a-form>
+        </div>
+
+        <!-- Sprint List -->
+        <a-table
+          :data-source="sprints"
+          :columns="sprintColumns"
+          row-key="id"
+          :pagination="false"
+          size="small"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'status'">
+              <a-select :value="record.status" size="small" style="width: 90px" @change="(val: string) => handleSprintStatusChange(record.id, val)">
+                <a-select-option value="PLANNING">规划中</a-select-option>
+                <a-select-option value="ACTIVE">进行中</a-select-option>
+                <a-select-option value="COMPLETED">已完成</a-select-option>
+              </a-select>
+            </template>
+            <template v-if="column.key === 'dates'">
+              <span>{{ record.startDate || '未设置' }} ~ {{ record.endDate || '未设置' }}</span>
+            </template>
+            <template v-if="column.key === 'action'">
+              <a-space>
+                <a-button type="link" size="small" @click="editSprint(record)">编辑</a-button>
+                <a-popconfirm title="确定删除该冲刺？" @confirm="handleDeleteSprint(record.id)">
+                  <a-button type="link" danger size="small">删除</a-button>
+                </a-popconfirm>
+              </a-space>
+            </template>
+          </template>
+        </a-table>
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -294,10 +380,11 @@ import {
   PlusOutlined,
   CalendarOutlined,
   UserOutlined,
-  UserAddOutlined
+  UserAddOutlined,
+  ThunderboltOutlined
 } from '@ant-design/icons-vue'
 import { getProject, updateProject, getProjectMembers, addProjectMember, updateProjectMemberRole, removeProjectMember } from '@/api/project'
-import { listSprints } from '@/api/sprint'
+import { listSprints, createSprint, updateSprint, deleteSprint } from '@/api/sprint'
 import { createTask } from '@/api/task'
 import { getWorkspaceMembers } from '@/api/workspace'
 import type { Project, Sprint, ProjectMember, WorkspaceMember } from '@/types'
@@ -342,9 +429,124 @@ const newTaskForm = reactive({
   description: '',
   priority: 'MEDIUM',
   assigneeId: undefined as number | undefined,
+  sprintId: undefined as number | undefined,
   startDate: null as Dayjs | null,
   dueDate: null as Dayjs | null
 })
+
+// Sprint Management
+const sprintModalVisible = ref(false)
+const showSprintForm = ref(false)
+const sprintFormLoading = ref(false)
+const editingSprintId = ref<number | null>(null)
+const sprintForm = reactive({
+  name: '',
+  goal: '',
+  startDate: null as Dayjs | null,
+  endDate: null as Dayjs | null
+})
+
+const sprintColumns = [
+  { title: '名称', dataIndex: 'name', key: 'name' },
+  { title: '目标', dataIndex: 'goal', key: 'goal', ellipsis: true },
+  { title: '状态', key: 'status', width: 90 },
+  { title: '日期', key: 'dates', width: 200 },
+  { title: '操作', key: 'action', width: 130 }
+]
+
+function sprintStatusLabel(status: string): string {
+  const map: Record<string, string> = { PLANNING: '规划中', ACTIVE: '进行中', COMPLETED: '已完成' }
+  return map[status] || status
+}
+
+function openSprintModal() {
+  sprintModalVisible.value = true
+  showSprintForm.value = false
+  editingSprintId.value = null
+}
+
+function openNewSprintForm() {
+  editingSprintId.value = null
+  sprintForm.name = ''
+  sprintForm.goal = ''
+  sprintForm.startDate = null
+  sprintForm.endDate = null
+  showSprintForm.value = true
+}
+
+function cancelSprintForm() {
+  showSprintForm.value = false
+  editingSprintId.value = null
+}
+
+function editSprint(record: Sprint) {
+  editingSprintId.value = record.id
+  sprintForm.name = record.name
+  sprintForm.goal = record.goal || ''
+  sprintForm.startDate = record.startDate ? dayjs(record.startDate) : null
+  sprintForm.endDate = record.endDate ? dayjs(record.endDate) : null
+  showSprintForm.value = true
+}
+
+async function handleSaveSprint() {
+  if (!sprintForm.name) {
+    message.warning('请输入冲刺名称')
+    return
+  }
+  sprintFormLoading.value = true
+  try {
+    if (editingSprintId.value) {
+      await updateSprint(editingSprintId.value, {
+        name: sprintForm.name,
+        goal: sprintForm.goal || undefined,
+        startDate: sprintForm.startDate?.format('YYYY-MM-DD'),
+        endDate: sprintForm.endDate?.format('YYYY-MM-DD')
+      })
+      message.success('冲刺已更新')
+    } else {
+      await createSprint(projectId.value, {
+        name: sprintForm.name,
+        goal: sprintForm.goal || undefined,
+        startDate: sprintForm.startDate?.format('YYYY-MM-DD'),
+        endDate: sprintForm.endDate?.format('YYYY-MM-DD')
+      })
+      message.success('冲刺已创建')
+    }
+    showSprintForm.value = false
+    editingSprintId.value = null
+    const res = await listSprints(projectId.value)
+    sprints.value = res.data
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '操作失败')
+  } finally {
+    sprintFormLoading.value = false
+  }
+}
+
+async function handleDeleteSprint(id: number) {
+  try {
+    await deleteSprint(id)
+    message.success('冲刺已删除')
+    if (selectedSprintId.value === id) {
+      selectedSprintId.value = undefined
+    }
+    const res = await listSprints(projectId.value)
+    sprints.value = res.data
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '删除失败')
+  }
+}
+
+async function handleSprintStatusChange(id: number, status: string) {
+  try {
+    await updateSprint(id, { status })
+    message.success('状态已更新')
+    const res = await listSprints(projectId.value)
+    sprints.value = res.data
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '更新失败')
+  }
+}
 
 // Add Member
 const addMemberModalVisible = ref(false)
@@ -451,6 +653,7 @@ function openNewTask() {
   newTaskForm.description = ''
   newTaskForm.priority = 'MEDIUM'
   newTaskForm.assigneeId = undefined
+  newTaskForm.sprintId = selectedSprintId.value
   newTaskForm.startDate = null
   newTaskForm.dueDate = null
   newTaskModalVisible.value = true
@@ -470,7 +673,7 @@ async function handleCreateTask() {
       assigneeId: newTaskForm.assigneeId,
       startDate: newTaskForm.startDate?.format('YYYY-MM-DD'),
       dueDate: newTaskForm.dueDate?.format('YYYY-MM-DD'),
-      sprintId: selectedSprintId.value
+      sprintId: newTaskForm.sprintId
     })
     message.success('任务已创建')
     newTaskModalVisible.value = false
@@ -636,5 +839,16 @@ function formatDate(dateStr: string): string {
 .user-search-email {
   color: #8c8c8c;
   font-size: 12px;
+}
+
+.sprint-modal-toolbar {
+  margin-bottom: 12px;
+}
+
+.sprint-form {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 6px;
+  margin-bottom: 12px;
 }
 </style>

@@ -34,10 +34,6 @@
           <template #icon><ProjectOutlined /></template>
           <span>项目</span>
         </a-menu-item>
-        <a-menu-item key="/my-tasks">
-          <template #icon><CheckSquareOutlined /></template>
-          <span>我的任务</span>
-        </a-menu-item>
         <a-menu-item key="/documents">
           <template #icon><FileTextOutlined /></template>
           <span>文档中心</span>
@@ -85,6 +81,9 @@
             v-model:value="searchText"
             placeholder="搜索项目、任务..."
             style="width: 320px; margin-left: 24px"
+            @search="handleGlobalSearch"
+            @pressEnter="handleGlobalSearch"
+            allow-clear
           />
         </div>
 
@@ -138,6 +137,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { message } from 'ant-design-vue'
 import {
   DashboardOutlined,
   ProjectOutlined,
@@ -154,6 +154,9 @@ import {
   LogoutOutlined
 } from '@ant-design/icons-vue'
 import { useAuthStore } from '@/stores/auth'
+import { listProjects } from '@/api/project'
+import { listMyTasks } from '@/api/task'
+import type { Project, Task } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -163,7 +166,7 @@ const collapsed = ref(false)
 const searchText = ref('')
 const selectedKeys = ref<string[]>(['/'])
 
-const menuPaths = ['/admin/users', '/my-tasks', '/workspaces', '/projects', '/documents', '/reports', '/settings', '/']
+const menuPaths = ['/admin/users', '/workspaces', '/projects', '/documents', '/reports', '/settings', '/']
 
 const isAdmin = computed(() => authStore.user?.username === 'admin')
 const username = computed(() => authStore.user?.username || '用户')
@@ -182,6 +185,37 @@ watch(
 
 function onMenuClick({ key }: { key: string }) {
   router.push(key)
+}
+
+async function handleGlobalSearch(value: string) {
+  const kw = (value || '').trim()
+  if (!kw) return
+
+  try {
+    const [projRes, taskRes] = await Promise.all([
+      listProjects(),
+      listMyTasks({ keyword: kw })
+    ])
+
+    const matchedProjects = projRes.data.filter(p =>
+      p.name.toLowerCase().includes(kw.toLowerCase()) ||
+      (p.description && p.description.toLowerCase().includes(kw.toLowerCase()))
+    )
+    const matchedTasks = taskRes.data || []
+
+    if (matchedProjects.length === 1 && matchedTasks.length === 0) {
+      router.push({ name: 'ProjectDetail', params: { id: matchedProjects[0].id } })
+    } else if (matchedTasks.length === 1 && matchedProjects.length === 0) {
+      router.push({ name: 'ProjectDetail', params: { id: matchedTasks[0].projectId }, query: { taskId: String(matchedTasks[0].id) } })
+    } else if (matchedProjects.length === 0 && matchedTasks.length === 0) {
+      message.info('未找到匹配的项目或任务')
+    } else {
+      // 多个结果：跳到项目列表，带上搜索关键词
+      router.push({ path: '/projects', query: { search: kw } })
+    }
+  } catch {
+    message.error('搜索失败')
+  }
 }
 
 async function handleLogout() {

@@ -128,7 +128,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { message, type FormInstance } from 'ant-design-vue'
 import {
   PlusOutlined,
@@ -143,11 +143,12 @@ import type { Rule } from 'ant-design-vue/es/form'
 import dayjs, { type Dayjs } from 'dayjs'
 
 const router = useRouter()
+const route = useRoute()
 
 const loading = ref(false)
 const projects = ref<Project[]>([])
 const workspaces = ref<Workspace[]>([])
-const searchKeyword = ref('')
+const searchKeyword = ref((route.query.search as string) || '')
 const filterStatus = ref<string | undefined>(undefined)
 
 const modalVisible = ref(false)

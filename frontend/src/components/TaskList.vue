@@ -32,6 +32,10 @@
         <a-select-option value="HIGH">高</a-select-option>
         <a-select-option value="URGENT">紧急</a-select-option>
       </a-select>
+      <a-button :type="onlyMine ? 'primary' : 'default'" size="small" @click="toggleMine">
+        <template #icon><UserOutlined /></template>
+        只看我的
+      </a-button>
     </div>
 
     <a-table
@@ -49,6 +53,9 @@
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'title'">
           <span class="task-title-cell">{{ record.title }}</span>
+        </template>
+        <template v-if="column.key === 'progress'">
+          <ProgressSlider :progress="record.progress ?? 0" size="mini" />
         </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
@@ -83,9 +90,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import { UserOutlined } from '@ant-design/icons-vue'
 import { listTasks, deleteTask, batchTasks } from '@/api/task'
+import { useAuthStore } from '@/stores/auth'
+import ProgressSlider from './ProgressSlider.vue'
 import type { Task, TaskQueryRequest } from '@/types'
 import dayjs from 'dayjs'
+
+const authStore = useAuthStore()
 
 const props = defineProps<{
   projectId: number
@@ -100,6 +112,13 @@ const loading = ref(false)
 const tasks = ref<Task[]>([])
 const total = ref(0)
 const selectedRowKeys = ref<number[]>([])
+const onlyMine = ref(false)
+
+function toggleMine() {
+  onlyMine.value = !onlyMine.value
+  pagination.current = 1
+  loadTasks()
+}
 
 const filters = reactive<TaskQueryRequest>({
   status: undefined,
@@ -116,7 +135,8 @@ const pagination = reactive({
 })
 
 const columns = [
-  { title: '任务标题', dataIndex: 'title', key: 'title', width: 280, sorter: true },
+  { title: '任务标题', dataIndex: 'title', key: 'title', width: 250, sorter: true },
+  { title: '任务进度', dataIndex: 'progress', key: 'progress', width: 140 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '优先级', dataIndex: 'priority', key: 'priority', width: 90 },
   { title: '负责人', dataIndex: 'assignee', key: 'assignee', width: 130 },
@@ -140,6 +160,9 @@ async function loadTasks() {
       page: pagination.current,
       pageSize: pagination.pageSize,
       ...filters
+    }
+    if (onlyMine.value) {
+      params.assigneeId = authStore.user?.id
     }
     if (props.sprintId) {
       params.sprintId = props.sprintId
@@ -176,7 +199,7 @@ function customRow(record: Task) {
 
 async function batchChangeStatus(status: string) {
   try {
-    await batchTasks({ taskIds: selectedRowKeys.value, action: 'STATUS', value: status })
+    await batchTasks({ taskIds: selectedRowKeys.value, status })
     message.success('状态已更新')
     selectedRowKeys.value = []
     await loadTasks()

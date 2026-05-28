@@ -43,7 +43,7 @@ public class TaskController {
 
     @PutMapping("/api/tasks/{id}")
     public Result<TaskResponse> update(@PathVariable Long id, @Valid @RequestBody TaskUpdateRequest request) {
-        return Result.success(taskService.update(id, request));
+        return Result.success(taskService.update(id, securityUtil.getCurrentUserId(), request));
     }
 
     @DeleteMapping("/api/tasks/{id}")

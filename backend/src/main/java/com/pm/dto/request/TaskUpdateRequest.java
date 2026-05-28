@@ -21,4 +21,5 @@ public class TaskUpdateRequest {
     private LocalDate startDate;
     private LocalDate dueDate;
     private Integer sortOrder;
+    private Integer progress;
 }

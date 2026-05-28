@@ -124,7 +124,7 @@ public class DocumentServiceImpl implements DocumentService {
     public String downloadVersion(Long versionId) {
         DocumentVersion version = documentVersionRepository.findById(versionId)
                 .orElseThrow(() -> new RuntimeException("Document version not found"));
-        return minioService.getPubDocUrl(version.getFileName());
+        return minioService.getPubDocUrl(version.getFilePath());
     }
 
     @Override

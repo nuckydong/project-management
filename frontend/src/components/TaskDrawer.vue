@@ -58,6 +58,21 @@
               <a-date-picker v-model:value="editDueDate" size="small" @change="saveDates" />
             </div>
           </div>
+          <div class="header-progress">
+            <div class="meta-item">
+              <span class="meta-label">进度</span>
+              <ProgressSlider :progress="editProgress" :editable="true" @update="saveProgress" style="flex: 1; max-width: 220px" />
+              <a-input-number
+                v-model:value="editProgress"
+                :min="0"
+                :max="100"
+                :precision="0"
+                size="small"
+                style="width: 70px"
+                @change="saveProgress"
+              />
+            </div>
+          </div>
         </div>
 
         <!-- Description -->
@@ -177,6 +192,8 @@ import { UploadOutlined, PaperClipOutlined, EyeOutlined, DownloadOutlined } from
 import { getTask, updateTask, updateTaskStatus, assignTask } from '@/api/task'
 import { listComments, createComment } from '@/api/comment'
 import { listAttachments, uploadAttachment, deleteAttachment, previewAttachment, downloadAttachment } from '@/api/attachment'
+import { listActivityLogs } from '@/api/activity'
+import ProgressSlider from './ProgressSlider.vue'
 import type { Task, Comment, Attachment, ActivityLog, ProjectMember } from '@/types'
 import type { UploadFile } from 'ant-design-vue'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -205,6 +222,7 @@ const editAssigneeId = ref<number | null>(null)
 const editStartDate = ref<Dayjs | null>(null)
 const editDueDate = ref<Dayjs | null>(null)
 const editDescription = ref('')
+const editProgress = ref(0)
 
 // Comments
 const comments = ref<Comment[]>([])
@@ -228,14 +246,16 @@ async function loadTaskData() {
   if (!props.taskId) return
   loading.value = true
   try {
-    const [taskRes, commentsRes, attachRes] = await Promise.all([
+    const [taskRes, commentsRes, attachRes, activityRes] = await Promise.all([
       getTask(props.taskId),
       listComments(props.taskId),
-      listAttachments(props.taskId)
+      listAttachments(props.taskId),
+      listActivityLogs(props.taskId)
     ])
     task.value = taskRes.data
     comments.value = commentsRes.data
     attachments.value = attachRes.data
+    activities.value = activityRes.data
 
     editTitle.value = task.value.title
     editStatus.value = task.value.status
@@ -244,6 +264,7 @@ async function loadTaskData() {
     editStartDate.value = task.value.startDate ? dayjs(task.value.startDate) : null
     editDueDate.value = task.value.dueDate ? dayjs(task.value.dueDate) : null
     editDescription.value = task.value.description || ''
+    editProgress.value = task.value.progress ?? 0
   } catch (err: unknown) {
     message.error(err instanceof Error ? err.message : '加载任务失败')
   } finally {
@@ -304,6 +325,21 @@ async function saveDates() {
     })
   } catch (err: unknown) {
     message.error(err instanceof Error ? err.message : '更新日期失败')
+  }
+}
+
+async function saveProgress(val: number | null) {
+  if (!task.value) return
+  const v = val ?? 0
+  if (v === task.value.progress) return
+  try {
+    await updateTask(task.value.id, { progress: v })
+    task.value.progress = v
+    editProgress.value = v
+    emit('updated')
+  } catch (err: unknown) {
+    message.error(err instanceof Error ? err.message : '更新进度失败')
+    editProgress.value = task.value.progress
   }
 }
 
@@ -431,6 +467,16 @@ function formatSize(bytes: number): string {
   display: flex;
   gap: 20px;
   flex-wrap: wrap;
+}
+
+.header-progress {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+}
+
+.header-progress .meta-item {
+  flex: 1;
 }
 
 .meta-item {

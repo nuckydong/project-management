@@ -117,23 +117,59 @@
 
           <!-- Recent Activities -->
           <a-card title="近期活动" :bordered="false" class="content-card activity-card">
-            <div v-if="dashboard?.recentActivities?.length">
-              <a-timeline>
-                <a-timeline-item
-                  v-for="activity in dashboard.recentActivities"
-                  :key="activity.id"
-                  :color="activityColor(activity.action)"
+            <template #extra>
+              <div class="activity-filters">
+                <a-select
+                  v-model:value="activityProjectFilter"
+                  placeholder="全部项目"
+                  style="width: 120px"
+                  allow-clear
+                  size="small"
                 >
-                  <div class="activity-item">
-                    <a-avatar :size="20" :style="{ backgroundColor: '#5B9BD5', fontSize: '10px', verticalAlign: 'middle' }">
-                      {{ activity.user.username.charAt(0).toUpperCase() }}
-                    </a-avatar>
+                  <a-select-option v-for="proj in dashboard?.projects" :key="proj.projectId" :value="proj.projectId">
+                    {{ proj.projectName }}
+                  </a-select-option>
+                </a-select>
+                <a-select
+                  v-model:value="activityTaskFilter"
+                  placeholder="全部任务"
+                  style="width: 140px"
+                  allow-clear
+                  size="small"
+                  show-search
+                  :filter-option="filterTask"
+                >
+                  <a-select-option v-for="t in filteredTasks" :key="t.id" :value="t.id">
+                    {{ t.title }}
+                  </a-select-option>
+                </a-select>
+              </div>
+            </template>
+            <div v-if="filteredActivities.length" class="activity-list">
+              <div
+                v-for="activity in filteredActivities"
+                :key="activity.id"
+                class="activity-entry"
+              >
+                <a-avatar :size="24" :style="{ backgroundColor: '#5B9BD5', fontSize: '11px', flexShrink: 0 }">
+                  {{ activity.user.username.charAt(0).toUpperCase() }}
+                </a-avatar>
+                <div class="activity-body">
+                  <div class="activity-main">
                     <span class="activity-user">{{ activity.user.username }}</span>
                     <span class="activity-action">{{ activity.detail || activity.action }}</span>
-                    <div class="activity-time">{{ formatDateTime(activity.createdAt) }}</div>
                   </div>
-                </a-timeline-item>
-              </a-timeline>
+                  <div class="activity-meta">
+                    <span v-if="activity.projectName" class="activity-project" @click="goToProject(activity.projectId)">
+                      {{ activity.projectName }}
+                    </span>
+                    <span v-if="activity.taskTitle" class="activity-task" @click="goToActivityTask(activity)">
+                      / {{ activity.taskTitle }}
+                    </span>
+                  </div>
+                </div>
+                <span class="activity-time">{{ formatRelativeTime(activity.createdAt) }}</span>
+              </div>
             </div>
             <a-empty v-else description="暂无活动" />
           </a-card>
@@ -144,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
@@ -154,12 +190,55 @@ import {
   CheckCircleOutlined
 } from '@ant-design/icons-vue'
 import { getDashboard } from '@/api/report'
-import type { Dashboard } from '@/types'
+import { listTasks } from '@/api/task'
+import type { Dashboard, Task } from '@/types'
 import dayjs from 'dayjs'
 
 const router = useRouter()
 const loading = ref(false)
 const dashboard = ref<Dashboard | null>(null)
+const activityProjectFilter = ref<number | undefined>(undefined)
+const activityTaskFilter = ref<number | undefined>(undefined)
+const projectTasks = ref<Task[]>([])
+
+const filteredActivities = computed(() => {
+  let list = dashboard.value?.recentActivities || []
+  if (activityProjectFilter.value) {
+    list = list.filter(a => a.projectId === activityProjectFilter.value)
+  }
+  if (activityTaskFilter.value) {
+    list = list.filter(a => a.taskId === activityTaskFilter.value)
+  }
+  return list
+})
+
+const filteredTasks = computed(() => {
+  return projectTasks.value
+})
+
+function filterTask(input: string, option: any) {
+  const task = projectTasks.value.find(t => t.id === option.value)
+  if (!task) return false
+  return task.title.toLowerCase().includes(input.toLowerCase())
+}
+
+watch(activityProjectFilter, async (projectId) => {
+  activityTaskFilter.value = undefined
+  projectTasks.value = []
+  if (projectId) {
+    try {
+      const res = await listTasks(projectId, { pageSize: 200 })
+      projectTasks.value = res.data.list
+    } catch { /* ignore */ }
+  }
+})
+
+// Auto-select first project on load
+watch(() => dashboard.value?.projects, (projects) => {
+  if (projects?.length && !activityProjectFilter.value) {
+    activityProjectFilter.value = projects[0].projectId
+  }
+}, { immediate: true })
 
 onMounted(async () => {
   loading.value = true
@@ -219,6 +298,24 @@ function goToTask(task: { id: number; projectId: number }) {
 
 function goToProject(projectId: number) {
   router.push({ name: 'ProjectDetail', params: { id: projectId } })
+}
+
+function goToActivityTask(activity: { projectId: number; taskId: number | null }) {
+  if (!activity.taskId) return
+  router.push({ name: 'ProjectDetail', params: { id: activity.projectId }, query: { taskId: String(activity.taskId) } })
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const now = dayjs()
+  const target = dayjs(dateStr)
+  const diffMin = now.diff(target, 'minute')
+  if (diffMin < 1) return '刚刚'
+  if (diffMin < 60) return `${diffMin}分钟前`
+  const diffHour = now.diff(target, 'hour')
+  if (diffHour < 24) return `${diffHour}小时前`
+  const diffDay = now.diff(target, 'day')
+  if (diffDay < 7) return `${diffDay}天前`
+  return target.format('MM-DD HH:mm')
 }
 </script>
 
@@ -389,25 +486,85 @@ function goToProject(projectId: number) {
   margin-bottom: 0;
 }
 
-.activity-item {
+.activity-filters {
+  display: flex;
+  gap: 8px;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.activity-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.activity-entry:last-child {
+  border-bottom: none;
+}
+
+.activity-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-main {
   font-size: 13px;
   line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .activity-user {
   font-weight: 500;
   color: #2c3e50;
-  margin-left: 4px;
+  margin-right: 4px;
 }
 
 .activity-action {
+  color: #595959;
+}
+
+.activity-meta {
+  margin-top: 4px;
+  font-size: 12px;
   color: #8c8c8c;
-  margin-left: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-project {
+  color: #1677ff;
+  cursor: pointer;
+}
+
+.activity-project:hover {
+  text-decoration: underline;
+}
+
+.activity-task {
+  color: #8c8c8c;
+  cursor: pointer;
+}
+
+.activity-task:hover {
+  color: #1677ff;
 }
 
 .activity-time {
   font-size: 12px;
   color: #bfbfbf;
+  white-space: nowrap;
+  flex-shrink: 0;
   margin-top: 2px;
 }
 </style>

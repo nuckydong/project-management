@@ -231,7 +231,3 @@ jwt:
   access-token-expiration: 1800000    # 30 分钟
   refresh-token-expiration: 604800000 # 7 天
 ```
-
-## License
-
-Private - Internal Use Only

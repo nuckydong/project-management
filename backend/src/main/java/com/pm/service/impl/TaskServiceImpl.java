@@ -122,9 +122,10 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     @Transactional
-    public TaskResponse update(Long id, TaskUpdateRequest request) {
+    public TaskResponse update(Long id, Long userId, TaskUpdateRequest request) {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
+        Long projectId = task.getProject().getId();
 
         if (request.getTitle() != null) {
             task.setTitle(request.getTitle());
@@ -132,23 +133,46 @@ public class TaskServiceImpl implements TaskService {
         if (request.getDescription() != null) {
             task.setDescription(request.getDescription());
         }
-        if (request.getPriority() != null) {
+        if (request.getPriority() != null && !request.getPriority().equals(task.getPriority())) {
+            String oldVal = translatePriority(task.getPriority());
+            String newVal = translatePriority(request.getPriority());
             task.setPriority(request.getPriority());
+            activityLogService.log(projectId, id, userId, "PRIORITY_CHANGE",
+                    "将优先级从 " + oldVal + " 改为 " + newVal);
         }
         if (request.getAssigneeId() != null) {
-            task.setAssignee(userRepository.getReferenceById(request.getAssigneeId()));
+            String oldAssignee = task.getAssignee() != null ? task.getAssignee().getUsername() : "未分配";
+            User newAssignee = userRepository.getReferenceById(request.getAssigneeId());
+            String newAssigneeName = newAssignee.getUsername();
+            if (!request.getAssigneeId().equals(task.getAssignee() != null ? task.getAssignee().getId() : null)) {
+                task.setAssignee(newAssignee);
+                activityLogService.log(projectId, id, userId, "ASSIGNEE_CHANGE",
+                        "将负责人从 " + oldAssignee + " 改为 " + newAssigneeName);
+            }
         }
         if (request.getSprintId() != null) {
-            task.setSprint(sprintRepository.getReferenceById(request.getSprintId()));
+            task.setSprint(request.getSprintId() != null ? sprintRepository.getReferenceById(request.getSprintId()) : null);
         }
-        if (request.getStartDate() != null) {
+        if (request.getStartDate() != null && !request.getStartDate().equals(task.getStartDate())) {
+            String oldDate = task.getStartDate() != null ? task.getStartDate().toString() : "未设置";
+            activityLogService.log(projectId, id, userId, "START_DATE_CHANGE",
+                    "将开始日期从 " + oldDate + " 改为 " + request.getStartDate());
             task.setStartDate(request.getStartDate());
         }
-        if (request.getDueDate() != null) {
+        if (request.getDueDate() != null && !request.getDueDate().equals(task.getDueDate())) {
+            String oldDate = task.getDueDate() != null ? task.getDueDate().toString() : "未设置";
+            activityLogService.log(projectId, id, userId, "DUE_DATE_CHANGE",
+                    "将截止日期从 " + oldDate + " 改为 " + request.getDueDate());
             task.setDueDate(request.getDueDate());
         }
         if (request.getSortOrder() != null) {
             task.setSortOrder(request.getSortOrder());
+        }
+        if (request.getProgress() != null && !request.getProgress().equals(task.getProgress())) {
+            int oldProgress = task.getProgress() != null ? task.getProgress() : 0;
+            activityLogService.log(projectId, id, userId, "PROGRESS_CHANGE",
+                    "将进度从 " + oldProgress + "% 更新为 " + request.getProgress() + "%");
+            task.setProgress(request.getProgress());
         }
 
         task = taskRepository.save(task);
@@ -174,10 +198,12 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
+        String oldStatus = task.getStatus();
         task.setStatus(status);
         task = taskRepository.save(task);
 
-        activityLogService.log(task.getProject().getId(), id, userId, "UPDATE_STATUS", "Changed status to: " + status);
+        activityLogService.log(task.getProject().getId(), id, userId, "STATUS_CHANGE",
+                "将状态从 " + translateStatus(oldStatus) + " 改为 " + translateStatus(status));
 
         return toTaskResponse(task);
     }
@@ -188,6 +214,7 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
 
+        String oldAssignee = task.getAssignee() != null ? task.getAssignee().getUsername() : "未分配";
         if (assigneeId != null) {
             task.setAssignee(userRepository.getReferenceById(assigneeId));
         } else {
@@ -195,8 +222,9 @@ public class TaskServiceImpl implements TaskService {
         }
         task = taskRepository.save(task);
 
-        String detail = assigneeId != null ? "Assigned task to user: " + assigneeId : "Unassigned task";
-        activityLogService.log(task.getProject().getId(), id, userId, "ASSIGN_TASK", detail);
+        String newAssignee = assigneeId != null ? task.getAssignee().getUsername() : "未分配";
+        activityLogService.log(task.getProject().getId(), id, userId, "ASSIGNEE_CHANGE",
+                "将负责人从 " + oldAssignee + " 改为 " + newAssignee);
 
         return toTaskResponse(task);
     }
@@ -253,6 +281,7 @@ public class TaskServiceImpl implements TaskService {
                 .startDate(task.getStartDate())
                 .dueDate(task.getDueDate())
                 .sortOrder(task.getSortOrder())
+                .progress(task.getProgress() != null ? task.getProgress() : 0)
                 .tags(tags)
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
@@ -268,5 +297,25 @@ public class TaskServiceImpl implements TaskService {
                 .status(user.getStatus())
                 .createdAt(user.getCreatedAt())
                 .build();
+    }
+
+    private String translatePriority(String priority) {
+        return switch (priority) {
+            case "LOW" -> "低";
+            case "MEDIUM" -> "中";
+            case "HIGH" -> "高";
+            case "URGENT" -> "紧急";
+            default -> priority;
+        };
+    }
+
+    private String translateStatus(String status) {
+        return switch (status) {
+            case "TODO" -> "待办";
+            case "IN_PROGRESS" -> "进行中";
+            case "IN_REVIEW" -> "待审核";
+            case "DONE" -> "已完成";
+            default -> status;
+        };
     }
 }

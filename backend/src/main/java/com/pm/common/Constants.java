@@ -1,5 +1,7 @@
 package com.pm.common;
 
+import lombok.Getter;
+
 public final class Constants {
 
     private Constants() {
@@ -13,6 +15,7 @@ public final class Constants {
     public static final String REDIS_USER_PREFIX = "pm:user:";
 
     // User status
+    @Getter
     public enum UserStatus {
         INACTIVE(0),
         ACTIVE(1),
@@ -24,9 +27,6 @@ public final class Constants {
             this.value = value;
         }
 
-        public int getValue() {
-            return value;
-        }
     }
 
     // Task status
