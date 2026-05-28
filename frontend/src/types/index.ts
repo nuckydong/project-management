@@ -184,8 +184,12 @@ export interface TaskAssignRequest {
 
 export interface TaskBatchRequest {
   taskIds: number[]
-  action: string
+  action?: string
   value?: string
+  status?: string
+  priority?: string
+  assigneeId?: number
+  sprintId?: number
 }
 
 export interface TaskQueryRequest {

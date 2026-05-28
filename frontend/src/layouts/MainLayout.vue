@@ -141,7 +141,6 @@ import { message } from 'ant-design-vue'
 import {
   DashboardOutlined,
   ProjectOutlined,
-  CheckSquareOutlined,
   FileTextOutlined,
   BarChartOutlined,
   SettingOutlined,
@@ -156,7 +155,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { listProjects } from '@/api/project'
 import { listMyTasks } from '@/api/task'
-import type { Project, Task } from '@/types'
+import type { Project } from '@/types'
 
 const router = useRouter()
 const route = useRoute()
@@ -197,7 +196,7 @@ async function handleGlobalSearch(value: string) {
       listMyTasks({ keyword: kw })
     ])
 
-    const matchedProjects = projRes.data.filter(p =>
+    const matchedProjects = (projRes.data as Project[]).filter((p: Project) =>
       p.name.toLowerCase().includes(kw.toLowerCase()) ||
       (p.description && p.description.toLowerCase().includes(kw.toLowerCase()))
     )

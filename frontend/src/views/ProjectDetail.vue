@@ -454,11 +454,6 @@ const sprintColumns = [
   { title: '操作', key: 'action', width: 130 }
 ]
 
-function sprintStatusLabel(status: string): string {
-  const map: Record<string, string> = { PLANNING: '规划中', ACTIVE: '进行中', COMPLETED: '已完成' }
-  return map[status] || status
-}
-
 function openSprintModal() {
   sprintModalVisible.value = true
   showSprintForm.value = false

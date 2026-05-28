@@ -281,17 +281,6 @@ function formatDate(dateStr: string): string {
   return dayjs(dateStr).format('MM-DD')
 }
 
-function formatDateTime(dateStr: string): string {
-  return dayjs(dateStr).format('MM-DD HH:mm')
-}
-
-function activityColor(action: string): string {
-  if (action.includes('create')) return 'green'
-  if (action.includes('update')) return 'blue'
-  if (action.includes('delete')) return 'red'
-  return 'gray'
-}
-
 function goToTask(task: { id: number; projectId: number }) {
   router.push({ name: 'ProjectDetail', params: { id: task.projectId }, query: { taskId: task.id } })
 }
